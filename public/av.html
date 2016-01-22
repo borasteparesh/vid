@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+  
+
+  <title>SimlpeRTCOnePage</title>
+ <video id="peer2-to-peer1"  style="width:40%;"></video>
+<video id="peer1-to-peer2"  style="width:40%;"></video>
+
+<script>
+ var mediaConstraints = {
+    
+         OfferToReceiveAudio: true,
+         OfferToReceiveVideo: true
+     
+ };
+
+ var offerer, answerer;
+ var offererToAnswerer = document.getElementById('peer1-to-peer2');
+ var answererToOfferer = document.getElementById('peer2-to-peer1');
+
+ 
+ 
+
+ window.iceServers = {
+     iceServers: [{
+         url: 'stun:23.21.150.121'
+     }]
+ };
+
+ /* offerer */
+
+ function offererPeer(stream) {
+     offerer = new RTCPeerConnection(window.iceServers);
+	 console.log('offerer created');
+	 
+     offerer.addStream(stream);
+
+     offerer.onaddstream = function (event) {
+		
+         offererToAnswerer.src = URL.createObjectURL(event.stream);
+         offererToAnswerer.play();
+		 
+     };
+
+     offerer.onicecandidate = function (event) {
+         if (!event || !event.candidate) return;
+		console.log("Adding offerer to answerer-> answerer.addIceCandidate");
+		
+         answerer.addIceCandidate(event.candidate);
+     };
+
+     offerer.createOffer(function (offer) {
+         offerer.setLocalDescription(offer);
+		
+         answererPeer(offer, stream);
+     }, onSdpError, mediaConstraints);
+ }
+
+
+ /* answerer */
+
+ function answererPeer(offer, stream) {
+     answerer = new RTCPeerConnection(window.iceServers);
+	 console.log('answerer created');
+	
+     
+     answerer.addStream(stream);
+
+     answerer.onaddstream = function (event) {
+	 console.log("Recieved  stream at answerer");
+         answererToOfferer.src = URL.createObjectURL(event.stream);
+         answererToOfferer.play();
+		  console.log(answerer);
+     };
+
+     answerer.onicecandidate = function (event) {
+         if (!event || !event.candidate) return;
+		console.log("Adding answerer to offerer -> offerer.addIceCandidate");
+         offerer.addIceCandidate(event.candidate);
+     };
+
+     answerer.setRemoteDescription(offer, onSdpSucces, onSdpError);
+     answerer.createAnswer(function (answer) {
+         console.log("Creating of answer to and setting remotedesc");
+		 answerer.setLocalDescription(answer);
+         offerer.setRemoteDescription(answer, onSdpSucces, onSdpError);
+     }, onSdpError, mediaConstraints);
+ }
+
+function setCookie(cname, cvalue, exdays) {
+    var d = new Date();
+    d.setTime(d.getTime() + (exdays*24*60*60*1000));
+    var expires = "expires="+d.toUTCString();
+    document.cookie = cname + "=" + JSON.stringify(cvalue) + "; " + expires;
+}
+function getCookie(cname) {
+    var name = cname + "=";
+    var ca = document.cookie.split(';');
+    for(var i=0; i<ca.length; i++) {
+        var c = ca[i];
+        while (c.charAt(0)==' ') c = c.substring(1);
+        if (c.indexOf(name) == 0) return JSON.parse(c.substring(name.length,c.length));
+    }
+    return "";
+}
+
+
+ function getUserMedia(callback) {
+     navigator.getUserMedia({
+         audio: true,
+         video: true
+     }, callback, onerror);
+
+     function onerror(e) {
+         console.error(e);
+     }
+ }
+
+ getUserMedia(function (stream) {
+     offererPeer(stream);
+ });
+
+ function onSdpError(e) {
+     console.error('onSdpError', e);
+ }
+
+ function onSdpSucces() {
+     console.log('onSdpSucces');
+ }
+</script>
+  
+
+</body>
+
+</html>
